@@ -969,7 +969,7 @@
                         <div class="mb-8">
                             <img src="{{ $icon }}" alt="{{ $plan->name }}" class="w-20 h-20 mb-6 object-contain" loading="lazy" decoding="async">
                             <h3 class="text-2xl font-black text-slate-900">{{ $plan->name }}</h3>
-                            <p class="text-slate-500 text-sm mt-2 font-medium">{{ $plan->description }}</p>
+                            <p class="text-slate-500 text-sm mt-2 font-medium">{{ strip_tags($plan->description) }}</p>
                         </div>
 
                         <div class="mb-8">

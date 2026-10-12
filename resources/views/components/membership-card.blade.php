@@ -68,7 +68,7 @@
         {{-- Description --}}
         @if($plan->description ?? false)
             <p class="mt-3 text-sm {{ $featured ? 'text-white/80' : 'text-gray-500' }} leading-relaxed">
-                {{ $plan->description }}
+                {{ strip_tags($plan->description) }}
             </p>
         @endif
 

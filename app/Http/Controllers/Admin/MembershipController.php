@@ -106,8 +106,12 @@ class MembershipController extends Controller
     /**
      * Parse features from textarea (one per line) to array.
      */
-    private function parseFeatures(string $text): array
+    private function parseFeatures(?string $text): array
     {
+        if (empty($text)) {
+            return [];
+        }
+
         return collect(explode("\n", $text))
             ->map(fn ($line) => trim($line))
             ->filter()

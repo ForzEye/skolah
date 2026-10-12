@@ -52,7 +52,7 @@
                 <div class="p-6 {{ $isPopular ? 'pt-9' : '' }} flex-1 flex flex-col">
                     {{-- Plan Name --}}
                     <h3 class="text-xl font-bold text-slate-900 mb-1">{{ $plan->name }}</h3>
-                    <p class="text-sm text-slate-500 mb-6 leading-relaxed">{{ $plan->description }}</p>
+                    <p class="text-sm text-slate-500 mb-6 leading-relaxed">{{ strip_tags($plan->description) }}</p>
 
                     {{-- Price --}}
                     <div class="mb-6">
