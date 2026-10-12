@@ -407,8 +407,9 @@ class DashboardController extends Controller
                 'error'    => $e->getMessage(),
             ]);
 
+            $msg = 'Gagal memproses pembayaran: ' . $e->getMessage();
             return redirect()->route('dashboard.orders')
-                ->with('error', 'Gagal memproses pembayaran. Silakan coba lagi.');
+                ->with('error', $msg);
         }
     }
 

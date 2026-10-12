@@ -93,15 +93,21 @@ class MidtransService
             $token = $response->token;
             $redirectUrl = $response->redirect_url;
         } catch (\Exception $e) {
+            \Log::error('Midtrans Snap Error: ' . $e->getMessage(), [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'midtransOrderId' => $midtransOrderId,
+                'is_production' => config('midtrans.is_production'),
+            ]);
+
             // Jika order_id duplikat, tambahkan suffix unik (standar Midtrans)
-            if (str_contains(strtolower($e->getMessage()), 'order_id') || str_contains(strtolower($e->getMessage()), 'taken')) {
+            if (str_contains(strtolower($e->getMessage()), 'order_id') || str_contains(strtolower($e->getMessage()), 'taken') || str_contains(strtolower($e->getMessage()), 'already')) {
                 $midtransOrderId = $order->order_number . '-' . time();
                 $params['transaction_details']['order_id'] = $midtransOrderId;
                 $response = \Midtrans\Snap::createTransaction($params);
                 $token = $response->token;
                 $redirectUrl = $response->redirect_url;
             } else {
-                \Log::error('Midtrans Snap Error: ' . $e->getMessage());
                 throw $e;
             }
         }
