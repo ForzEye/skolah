@@ -78,10 +78,6 @@ class MidtransService
                 'unfinish'  => route('checkout.failed'),
                 'error'     => route('checkout.failed'),
             ],
-            'gopay' => [
-                'enable_callback' => true,
-                'callback_url'    => route('checkout.success'),
-            ],
             'notification_url' => route('api.midtrans.webhook'),
         ];
 
