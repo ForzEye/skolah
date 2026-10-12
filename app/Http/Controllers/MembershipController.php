@@ -155,19 +155,39 @@ class MembershipController extends Controller
 
     public function success(Request $request)
     {
+        $statusParam = $request->query('transaction_status');
+        $actionParam = $request->query('action');
+
+        if ($actionParam === 'back' || in_array($statusParam, ['cancel', 'deny', 'expire'])) {
+            return redirect()->route('membership')
+                ->with('warning', 'Pembayaran dibatalkan atau belum diselesaikan.');
+        }
+
         $order = Order::where('order_number', $request->order_id)->first();
 
         // Fallback jika webhook belum sampai
         if ($order && $order->status === 'pending') {
-            $order->loadMissing('items');
-            $hasMembership = $order->items()
-                ->where('itemable_type', MembershipPlan::class)
-                ->exists();
+            try {
+                $status = $this->midtrans->getTransactionStatus($order->order_number);
+                if ($status && $this->midtrans->isPaymentSuccess($status)) {
+                    $order->loadMissing('items');
+                    $hasMembership = $order->items()
+                        ->where('itemable_type', MembershipPlan::class)
+                        ->exists();
 
-            if ($hasMembership) {
-                $order->update(['status' => 'paid', 'paid_at' => now()]);
-                $this->membershipService->handlePaymentSuccess($order);
+                    if ($hasMembership) {
+                        $order->update(['status' => 'paid', 'paid_at' => now()]);
+                        $this->membershipService->handlePaymentSuccess($order);
+                    }
+                }
+            } catch (\Throwable $e) {
+                // ignore
             }
+        }
+
+        if ($order && $order->status === 'pending') {
+            return redirect()->route('membership')
+                ->with('warning', 'Pembayaran belum diselesaikan.');
         }
 
         return redirect()->route('dashboard.membership')

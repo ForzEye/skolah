@@ -17,6 +17,17 @@ class MidtransService
         \Midtrans\Config::$isProduction = config('midtrans.is_production');
         \Midtrans\Config::$isSanitized  = config('midtrans.is_sanitized', true);
         \Midtrans\Config::$is3ds        = config('midtrans.is_3ds', true);
+
+        // Fix SSL certificate error pada XAMPP/Windows (cURL error 60: unable to get local issuer certificate)
+        // Di production server Linux, SSL berjalan normal sehingga ini tidak diperlukan.
+        // Di local XAMPP Windows, CA bundle tidak dikonfigurasi secara default.
+        if (! config('midtrans.is_production')) {
+            \Midtrans\Config::$curlOptions = [
+                CURLOPT_HTTPHEADER     => [],
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => 0,
+            ];
+        }
     }
 
     /**
@@ -71,6 +82,13 @@ class MidtransService
                 'unfinish'  => route('checkout.failed'),
                 'error'     => route('checkout.failed'),
             ],
+            'gopay' => [
+                'enable_callback' => true,
+                'callback_url'    => route('checkout.success'),
+            ],
+            'shopeepay' => [
+                'callback_url'    => route('checkout.success'),
+            ],
             'notification_url' => route('api.midtrans.webhook'),
         ];
 
@@ -98,8 +116,6 @@ class MidtransService
         ]);
 
         return $redirectUrl;
-
-        return $token;
     }
 
     /**
@@ -186,12 +202,13 @@ class MidtransService
             : 'https://app.sandbox.midtrans.com/snap/v3';
 
         try {
-            $response = Http::withHeaders([
-                'Accept'       => 'application/json',
-                'Content-Type' => 'application/json',
-            ])
-            ->withBasicAuth($serverKey, '')
-            ->get($baseUrl . '/merchant-preferences');
+            $response = Http::withoutVerifying()
+                ->withHeaders([
+                    'Accept'       => 'application/json',
+                    'Content-Type' => 'application/json',
+                ])
+                ->withBasicAuth($serverKey, '')
+                ->get($baseUrl . '/merchant-preferences');
 
             if ($response->successful()) {
                 return $response->json();

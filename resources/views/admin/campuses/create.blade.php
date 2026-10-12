@@ -25,7 +25,7 @@
 
         <div>
             <label class="block text-sm font-bold text-gray-700 mb-2">Deskripsi Singkat</label>
-            <textarea name="description" rows="3" class="tinymce w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">{{ old('description') }}</textarea>
+            <textarea name="description" rows="3" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">{{ old('description') }}</textarea>
         </div>
 
         <div>

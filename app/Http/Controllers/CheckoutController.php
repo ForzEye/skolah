@@ -238,6 +238,17 @@ class CheckoutController extends Controller
                 ->first();
         }
 
+        $statusParam = $request->query('transaction_status');
+        $actionParam = $request->query('action');
+
+        // Jika user menutup / membatalkan di Midtrans (action=back, status=pending/cancel/expire/deny)
+        if ($actionParam === 'back' || in_array($statusParam, ['cancel', 'deny', 'expire'])) {
+            return redirect()->route('checkout.failed', array_filter([
+                'order_id' => $order?->order_number ?? $orderNumber,
+                'status'   => $statusParam,
+            ]))->with('warning', 'Pembayaran dibatalkan atau belum diselesaikan.');
+        }
+
         // ── Fallback: Jika order masih pending, cek status langsung ke Midtrans ──
         // Ini mengatasi kasus di mana webhook belum diterima
         // (sandbox, jaringan lambat, ngrok, dll.)
@@ -266,6 +277,13 @@ class CheckoutController extends Controller
                     'error'    => $e->getMessage(),
                 ]);
             }
+        }
+
+        // Jika setelah dicek status order MASIH pending (misal user belum bayar tapi akses halaman success)
+        if ($order && $order->status === 'pending') {
+            return redirect()->route('checkout.failed', [
+                'order_id' => $order->order_number,
+            ])->with('warning', 'Pembayaran belum diselesaikan. Silakan selesaikan pembayaran Anda.');
         }
 
         return view('checkout.success', compact('order'));

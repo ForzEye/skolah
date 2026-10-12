@@ -35,11 +35,13 @@ class CampusController extends Controller
             'description' => 'nullable|string',
             'address' => 'nullable|string',
             'map_link' => 'nullable|string',
-            'features' => 'required|array',
+            'features' => 'nullable|array',
             'image' => 'nullable|image|max:10240',
             'order' => 'nullable|integer',
             'is_active' => 'boolean',
         ]);
+
+        $data['features'] = array_values(array_filter($request->input('features', []), fn($f) => !is_null($f) && trim($f) !== ''));
 
         if ($request->hasFile('image')) {
             $data['image'] = $this->storage->uploadBanner($request->file('image'));
@@ -63,13 +65,14 @@ class CampusController extends Controller
             'description' => 'nullable|string',
             'address' => 'nullable|string',
             'map_link' => 'nullable|string',
-            'features' => 'required|array',
+            'features' => 'nullable|array',
             'image' => 'nullable|image|max:10240',
             'order' => 'nullable|integer',
             'is_active' => 'nullable|boolean',
         ]);
         
         $data['is_active'] = $request->has('is_active');
+        $data['features'] = array_values(array_filter($request->input('features', []), fn($f) => !is_null($f) && trim($f) !== ''));
 
         if ($request->hasFile('image')) {
             if ($campus->image) {

@@ -62,7 +62,7 @@ class CartController extends Controller
      * POST /cart/add
      * Body: type (course|bootcamp|book|membership), id, quantity?, billing_cycle?
      */
-    public function add(AddToCartRequest $request): RedirectResponse
+    public function add(AddToCartRequest $request): RedirectResponse|\Illuminate\Http\JsonResponse
     {
         $request->validate([
             'type'          => 'required|in:course,bundle,bootcamp,book,membership',
@@ -81,6 +81,12 @@ class CartController extends Controller
         [$cartableType, $cartableId, $price, $error, $variantId, $flashSaleItemId] = $this->resolveCartable($type, $id, $user, $request);
 
         if ($error) {
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $error,
+                ], 422);
+            }
             return back()->with('error', $error);
         }
 
@@ -106,7 +112,32 @@ class CartController extends Controller
                     'price'    => $price,
                 ]);
 
+                if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Jumlah buku diperbarui di keranjang.',
+                        'cart_count' => Cart::forUser($user->id)->count(),
+                    ]);
+                }
+
+                if ($request->boolean('no_redirect') || $request->input('redirect') === 'back') {
+                    return back()->with('success', 'Jumlah buku diperbarui di keranjang.');
+                }
+
                 return redirect()->route('cart')->with('success', 'Jumlah buku diperbarui di keranjang.');
+            }
+
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'already_exists' => true,
+                    'message' => 'Item ini sudah ada di keranjang Anda.',
+                    'cart_count' => Cart::forUser($user->id)->count(),
+                ]);
+            }
+
+            if ($request->boolean('no_redirect') || $request->input('redirect') === 'back') {
+                return back()->with('info', 'Item ini sudah ada di keranjang.');
             }
 
             return back()->with('info', 'Item ini sudah ada di keranjang.');
@@ -126,6 +157,18 @@ class CartController extends Controller
             'course_variant_id' => $variantId,
             'flash_sale_item_id'=> $flashSaleItemId,
         ]);
+
+        if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Item berhasil ditambahkan ke keranjang!',
+                'cart_count' => Cart::forUser($user->id)->count(),
+            ]);
+        }
+
+        if ($request->boolean('no_redirect') || $request->input('redirect') === 'back') {
+            return back()->with('success', 'Item berhasil ditambahkan ke keranjang!');
+        }
 
         return redirect()->route('cart')->with('success', 'Item berhasil ditambahkan ke keranjang!');
     }
@@ -348,9 +391,15 @@ class CartController extends Controller
             $price     = $variant->effective_price;
             $variantId = $variant->id;
         } else {
-            // Jika course punya active variants, wajib pilih salah satu
+            // Jika course punya active variants, gunakan varian aktif pertama sebagai default jika belum dipilih
             if ($course->has_variants) {
-                return [null, null, 0, 'Silakan pilih varian kursus terlebih dahulu.', null, null];
+                $defaultVariant = $course->activeVariants()->first();
+                if ($defaultVariant && !$defaultVariant->is_full) {
+                    $variantId = $defaultVariant->id;
+                    $price     = $defaultVariant->effective_price;
+                } else {
+                    return [null, null, 0, 'Silakan pilih varian kursus terlebih dahulu.', null, null];
+                }
             }
         }
 

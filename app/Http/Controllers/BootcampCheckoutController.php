@@ -169,16 +169,38 @@ class BootcampCheckoutController extends Controller
 
     public function success(Request $request)
     {
+        $statusParam = $request->query('transaction_status');
+        $actionParam = $request->query('action');
+
+        if ($actionParam === 'back' || in_array($statusParam, ['cancel', 'deny', 'expire'])) {
+            return redirect()->route('bootcamp.checkout.failed', [
+                'order_id' => $request->order_id,
+            ])->with('warning', 'Pembayaran dibatalkan atau belum diselesaikan.');
+        }
+
         $order = Order::where('order_number', $request->order_id)->first();
 
         // Fallback: proses jika webhook belum terpanggil
         if ($order && $order->status === 'pending') {
-            $order->loadMissing('items');
-            $hasBootcamp = $order->items()->where('itemable_type', Bootcamp::class)->exists();
-            if ($hasBootcamp) {
-                $order->update(['status' => 'paid', 'paid_at' => now()]);
-                $this->registrationService->handlePaymentSuccess($order);
+            try {
+                $status = $this->midtrans->getTransactionStatus($order->order_number);
+                if ($status && $this->midtrans->isPaymentSuccess($status)) {
+                    $order->loadMissing('items');
+                    $hasBootcamp = $order->items()->where('itemable_type', Bootcamp::class)->exists();
+                    if ($hasBootcamp) {
+                        $order->update(['status' => 'paid', 'paid_at' => now()]);
+                        $this->registrationService->handlePaymentSuccess($order);
+                    }
+                }
+            } catch (\Throwable $e) {
+                // ignore
             }
+        }
+
+        if ($order && $order->status === 'pending') {
+            return redirect()->route('bootcamp.checkout.failed', [
+                'order_id' => $request->order_id,
+            ])->with('warning', 'Pembayaran belum diselesaikan.');
         }
 
         return redirect()->route('dashboard.my-bootcamps')
