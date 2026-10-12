@@ -993,7 +993,7 @@
                             @endforeach
                         </ul>
 
-                        <a href="{{ route('memberships.show', $plan->slug) }}" 
+                        <a href="{{ route('membership') }}" 
                            class="w-full py-4 px-6 text-center {{ $plan->is_popular ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-500/40' : 'bg-slate-100 text-slate-800 hover:bg-slate-200' }} font-black rounded-2xl transition-all">
                             Pilih Paket
                         </a>

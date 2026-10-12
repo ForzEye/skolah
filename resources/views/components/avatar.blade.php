@@ -8,8 +8,10 @@
 ])
 
 @php
-    $displayName = $name ?: ($user?->name ?? 'User');
-    $avatarSrc   = $src ?: ($user?->avatar ? storageUrl($user->avatar) : null);
+    $userName    = is_array($user) ? ($user['name'] ?? null) : ($user?->name ?? null);
+    $userAvatar  = is_array($user) ? ($user['avatar'] ?? null) : ($user?->avatar ?? null);
+    $displayName = $name ?: ($userName ?? 'User');
+    $avatarSrc   = $src ?: ($userAvatar ? storageUrl($userAvatar) : null);
 
     // Initials
     $parts    = explode(' ', trim($displayName));

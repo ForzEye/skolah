@@ -69,6 +69,26 @@ class User extends Authenticatable implements MustVerifyEmail
         ];
     }
 
+    /**
+     * Decrypt the given encrypted string safely.
+     * Prevents DecryptException crash if the value is already plain text (e.g. from JSON cache rehydration or unencrypted input).
+     *
+     * @param  string  $value
+     * @return mixed
+     */
+    public function fromEncryptedString($value)
+    {
+        if (empty($value)) {
+            return $value;
+        }
+
+        try {
+            return parent::fromEncryptedString($value);
+        } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+            return $value;
+        }
+    }
+
     // ── Relasi ────────────────────────────────────────────────────────────────
 
     public function courses(): HasMany
