@@ -18,15 +18,15 @@ class MidtransService
         \Midtrans\Config::$isSanitized  = config('midtrans.is_sanitized', true);
         \Midtrans\Config::$is3ds        = config('midtrans.is_3ds', true);
 
-        // Fix SSL certificate error pada XAMPP/Windows (cURL error 60: unable to get local issuer certificate)
-        // Di production server Linux, SSL berjalan normal sehingga ini tidak diperlukan.
-        // Di local XAMPP Windows, CA bundle tidak dikonfigurasi secara default.
+        // Pastikan curlOptions diinisialisasi
+        \Midtrans\Config::$curlOptions = [
+            CURLOPT_HTTPHEADER => [],
+        ];
+
+        // Jika di local / non-production, bypass SSL verification
         if (! config('midtrans.is_production')) {
-            \Midtrans\Config::$curlOptions = [
-                CURLOPT_HTTPHEADER     => [],
-                CURLOPT_SSL_VERIFYPEER => false,
-                CURLOPT_SSL_VERIFYHOST => 0,
-            ];
+            \Midtrans\Config::$curlOptions[CURLOPT_SSL_VERIFYPEER] = false;
+            \Midtrans\Config::$curlOptions[CURLOPT_SSL_VERIFYHOST] = 0;
         }
     }
 
