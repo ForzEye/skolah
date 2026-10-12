@@ -18,16 +18,12 @@ class MidtransService
         \Midtrans\Config::$isSanitized  = config('midtrans.is_sanitized', true);
         \Midtrans\Config::$is3ds        = config('midtrans.is_3ds', true);
 
-        // Pastikan curlOptions diinisialisasi
+        // Inisialisasi curlOptions dan bypass verifikasi CA lokal jika server tidak memiliki CA bundle
         \Midtrans\Config::$curlOptions = [
-            CURLOPT_HTTPHEADER => [],
+            CURLOPT_HTTPHEADER     => [],
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => 0,
         ];
-
-        // Jika di local / non-production, bypass SSL verification
-        if (! config('midtrans.is_production')) {
-            \Midtrans\Config::$curlOptions[CURLOPT_SSL_VERIFYPEER] = false;
-            \Midtrans\Config::$curlOptions[CURLOPT_SSL_VERIFYHOST] = 0;
-        }
     }
 
     /**
