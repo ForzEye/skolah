@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\InstructorActivity;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class InstructorController extends Controller
 {
@@ -30,6 +31,7 @@ class InstructorController extends Controller
     public function toggleActive(User $user)
     {
         $user->update(['is_active' => !$user->is_active]);
+        Cache::forget('home_page_data_json_v3');
         
         $status = $user->is_active ? 'diaktifkan' : 'dinonaktifkan';
         return back()->with('success', "Akun instruktur {$user->name} berhasil {$status}.");
@@ -38,6 +40,7 @@ class InstructorController extends Controller
     public function togglePublic(User $user)
     {
         $user->update(['is_public' => !$user->is_public]);
+        Cache::forget('home_page_data_json_v3');
         
         $status = $user->is_public ? 'ditampilkan' : 'disembunyikan';
         return back()->with('success', "Instruktur {$user->name} berhasil {$status} dari daftar publik.");

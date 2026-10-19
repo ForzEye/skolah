@@ -282,6 +282,7 @@ header{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdr
 @endif
 </div></section>
 
+@if(isset($instructors) && $instructors->count() > 0)
 <section class="instructors" id="instruktur" aria-labelledby="instructorTitle">
 <div class="container">
 <div class="instructor-top">
@@ -292,7 +293,6 @@ header{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdr
     </div>
     <a class="link-arrow" href="{{ route('courses.index') }}">Lihat Kursus &amp; Pengajar <svg><use href="#i-arrow"/></svg></a>
 </div>
-@if(isset($instructors) && $instructors->count() > 0)
 <div class="instructor-grid">
 @php $instThemes = ["", "green", "purple"]; @endphp
 @foreach($instructors as $iIdx => $inst)
@@ -310,10 +310,8 @@ header{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdr
 </article>
 @endforeach
 </div>
-@else
-<div class="instructor-grid"><article class="instructor-card"><div class="instructor-avatar">SK</div><div><h3>Skolah Koperasi</h3><p>Bidang pembelajaran koperasi dan pengembangan organisasi.</p><span class="role">Instruktur Skolah.com</span></div></article><article class="instructor-card"><div class="instructor-avatar green">SK</div><div><h3>Skolah Konglomerat</h3><p>Bidang pembelajaran bisnis dan pengembangan perusahaan.</p><span class="role">Instruktur Skolah.com</span></div></article><article class="instructor-card"><div class="instructor-avatar purple"><svg style="width:28px;height:28px"><use href="#i-users"/></svg></div><div><h3>Komunitas Praktisi</h3><p>Pembelajaran bersama praktisi dan jejaring industri.</p><span class="role">Ekosistem Pembelajaran</span></div></article></div>
-@endif
 </div></section>
+@endif
 
 <section class="newsletter" id="newsletter" aria-labelledby="newsTitle">
 <div class="container newsletter-row">
@@ -344,22 +342,229 @@ header{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdr
 @push('scripts')
 <script nonce="{{ $cspNonce ?? '' }}">
 
-(function(){'use strict';
-const $=(selector,root=document)=>root.querySelector(selector);const $$=(selector,root=document)=>Array.from(root.querySelectorAll(selector));const searchOverlay=$('#searchOverlay'),consultOverlay=$('#consultOverlay'),searchInput=$('#searchInput'),menuToggle=$('#menuToggle'),mobilePanel=$('#mobilePanel');let lastFocus=null;let toastTimer;
-$('#year').textContent=new Date().getFullYear();
-function toast(message){const t=$('#toast');t.textContent=message;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),4300)}
-function openDialog(dialog,focus){lastFocus=document.activeElement;dialog.classList.add('open');dialog.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';setTimeout(()=>focus?.focus(),0)}
-function closeDialog(dialog){dialog.classList.remove('open');dialog.setAttribute('aria-hidden','true');document.body.style.overflow='';lastFocus?.focus()}
-const searchItems=[{name:'Kursus E-learning',kind:'Pembelajaran mandiri',href:'#belajar',icon:'i-monitor'},{name:'Bootcamp Interaktif',kind:'Kelas intensif',href:'#bootcamp',icon:'i-users'},{name:'Buku Digital',kind:'Materi bacaan',href:'#belajar',icon:'i-book'},{name:'Solusi Perusahaan',kind:'Pengembangan organisasi',href:'#tentang',icon:'i-brief'},{name:'Kampus Karawaci',kind:'Pusat pelatihan',href:'#kampus',icon:'i-pin'},{name:'Nature Campus Rumpin Bogor',kind:'Pusat pelatihan',href:'#kampus',icon:'i-pin'},{name:'Instruktur',kind:'Praktisi dan mentor',href:'#instruktur',icon:'i-academy'},{name:'Komunitas Skolah.com',kind:'Kegiatan dan kolaborasi',href:'#komunitas',icon:'i-users'}];
-function renderSearch(term=''){const result=$('#searchResults');result.replaceChildren();const found=searchItems.filter(i=>(i.name+' '+i.kind).toLowerCase().includes(term.trim().toLowerCase()));if(!found.length){const p=document.createElement('p');p.className='no-results';p.textContent='Tidak ditemukan. Coba kata kunci lain.';result.appendChild(p);return}for(const item of found){const a=document.createElement('a');a.href=item.href;a.className='search-result';a.innerHTML='<svg><use href="#'+item.icon+'"/></svg><span></span><svg><use href="#i-arrow"/></svg>';a.querySelector('span').textContent=item.name+' · '+item.kind;a.addEventListener('click',()=>closeDialog(searchOverlay));result.appendChild(a)}}
-$('#openSearch').addEventListener('click',()=>{renderSearch();searchInput.value='';openDialog(searchOverlay,searchInput)});$('#closeSearch').addEventListener('click',()=>closeDialog(searchOverlay));searchInput.addEventListener('input',e=>renderSearch(e.target.value));
-menuToggle.addEventListener('click',()=>{const open=mobilePanel.classList.toggle('open');menuToggle.setAttribute('aria-expanded',String(open));menuToggle.setAttribute('aria-label',open?'Tutup menu':'Buka menu')});$$('#mobilePanel a').forEach(a=>a.addEventListener('click',()=>{mobilePanel.classList.remove('open');menuToggle.setAttribute('aria-expanded','false')}));
-$$('[data-consult]').forEach(b=>b.addEventListener('click',()=>{mobilePanel.classList.remove('open');menuToggle.setAttribute('aria-expanded','false');openDialog(consultOverlay,$('#consultForm input'))}));$('#closeConsult').addEventListener('click',()=>closeDialog(consultOverlay));$('#cancelConsult').addEventListener('click',()=>closeDialog(consultOverlay));
-[searchOverlay,consultOverlay].forEach(overlay=>overlay.addEventListener('click',e=>{if(e.target===overlay)closeDialog(overlay)}));document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(searchOverlay.classList.contains('open'))closeDialog(searchOverlay);if(consultOverlay.classList.contains('open'))closeDialog(consultOverlay)}if(e.key==='Tab'){const dialog=$$('.open.search-overlay,.open.modal-overlay')[0];if(!dialog)return;const nodes=$$('a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled])',dialog);if(!nodes.length)return;const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}});
-const gallery=$('#gallery');$('#galleryNext').addEventListener('click',()=>gallery.scrollBy({left:gallery.clientWidth*.73,behavior:'smooth'}));$('#galleryPrev').addEventListener('click',()=>gallery.scrollBy({left:-gallery.clientWidth*.73,behavior:'smooth'}));
-$$('[data-subscribe]').forEach(form=>form.addEventListener('submit',e=>{e.preventDefault();const email=$('input[type=email]',form);if(!email.reportValidity())return;const status=form.nextElementSibling;status.textContent='Email valid. Prototipe ini belum terhubung ke sistem langganan.';toast('Formulir siap diintegrasikan dengan layanan email. Data belum dikirim.')}));
-$('#consultForm').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.target);const message='KEBUTUHAN PELATIHAN SKOLAH.COM\nNama: '+f.get('nama')+'\nOrganisasi: '+f.get('organisasi')+'\nEmail: '+f.get('email')+'\nKebutuhan: '+f.get('kebutuhan');try{await navigator.clipboard.writeText(message);toast('Ringkasan berhasil disalin. Silakan bagikan ke tim Skolah.com.');closeDialog(consultOverlay)}catch(err){const area=document.createElement('textarea');area.value=message;area.style.width='100%';area.style.marginTop='12px';area.rows=7;const modal=$('.modal',consultOverlay);const prev=$('#copyFallback',modal);if(prev)prev.remove();const wrap=document.createElement('div');wrap.id='copyFallback';const help=document.createElement('p');help.textContent='Salin ringkasan berikut secara manual:';wrap.append(help,area);modal.appendChild(wrap);area.select();toast('Browser membatasi akses clipboard. Ringkasan siap disalin secara manual.')}});
-})();
+(function(){
+    'use strict';
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+    
+    const searchOverlay = $('#searchOverlay');
+    const consultOverlay = $('#consultOverlay');
+    const searchInput = $('#searchInput');
+    const menuToggle = $('#menuToggle');
+    const mobilePanel = $('#mobilePanel');
+    let lastFocus = null;
+    let toastTimer;
 
+    const yearEl = $('#year');
+    if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+    function toast(message) {
+        const t = $('#toast');
+        if (!t) return;
+        t.textContent = message;
+        t.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => t.classList.remove('show'), 4300);
+    }
+
+    function openDialog(dialog, focus) {
+        if (!dialog) return;
+        lastFocus = document.activeElement;
+        dialog.classList.add('open');
+        dialog.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => focus?.focus(), 0);
+    }
+
+    function closeDialog(dialog) {
+        if (!dialog) return;
+        dialog.classList.remove('open');
+        dialog.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        lastFocus?.focus();
+    }
+
+    const searchItems = [
+        {name: 'Kursus E-learning', kind: 'Pembelajaran mandiri', href: '#belajar', icon: 'i-monitor'},
+        {name: 'Bootcamp Interaktif', kind: 'Kelas intensif', href: '#bootcamp', icon: 'i-users'},
+        {name: 'Buku Digital', kind: 'Materi bacaan', href: '#belajar', icon: 'i-book'},
+        {name: 'Solusi Perusahaan', kind: 'Pengembangan organisasi', href: '#tentang', icon: 'i-brief'},
+        {name: 'Kampus Karawaci', kind: 'Pusat pelatihan', href: '#kampus', icon: 'i-pin'},
+        {name: 'Nature Campus Rumpin Bogor', kind: 'Pusat pelatihan', href: '#kampus', icon: 'i-pin'},
+        {name: 'Instruktur', kind: 'Praktisi dan mentor', href: '#instruktur', icon: 'i-academy'},
+        {name: 'Komunitas Skolah.com', kind: 'Kegiatan dan kolaborasi', href: '#komunitas', icon: 'i-users'}
+    ];
+
+    function renderSearch(term = '') {
+        const result = $('#searchResults');
+        if (!result) return;
+        result.replaceChildren();
+        const found = searchItems.filter(i => (i.name + ' ' + i.kind).toLowerCase().includes(term.trim().toLowerCase()));
+        if (!found.length) {
+            const p = document.createElement('p');
+            p.className = 'no-results';
+            p.textContent = 'Tidak ditemukan. Coba kata kunci lain.';
+            result.appendChild(p);
+            return;
+        }
+        for (const item of found) {
+            const a = document.createElement('a');
+            a.href = item.href;
+            a.className = 'search-result';
+            a.innerHTML = '<svg><use href="#' + item.icon + '"/></svg><span></span><svg><use href="#i-arrow"/></svg>';
+            a.querySelector('span').textContent = item.name + ' · ' + item.kind;
+            a.addEventListener('click', () => closeDialog(searchOverlay));
+            result.appendChild(a);
+        }
+    }
+
+    const openSearch = $('#openSearch');
+    if (openSearch) {
+        openSearch.addEventListener('click', () => {
+            renderSearch();
+            if (searchInput) searchInput.value = '';
+            openDialog(searchOverlay, searchInput);
+        });
+    }
+
+    const closeSearch = $('#closeSearch');
+    if (closeSearch) {
+        closeSearch.addEventListener('click', () => closeDialog(searchOverlay));
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', e => renderSearch(e.target.value));
+    }
+
+    if (menuToggle && mobilePanel) {
+        menuToggle.addEventListener('click', () => {
+            const open = mobilePanel.classList.toggle('open');
+            menuToggle.setAttribute('aria-expanded', String(open));
+            menuToggle.setAttribute('aria-label', open ? 'Tutup menu' : 'Buka menu');
+        });
+        $$('#mobilePanel a').forEach(a => a.addEventListener('click', () => {
+            mobilePanel.classList.remove('open');
+            menuToggle.setAttribute('aria-expanded', 'false');
+        }));
+    }
+
+    $$('[data-consult]').forEach(b => b.addEventListener('click', () => {
+        if (mobilePanel && menuToggle) {
+            mobilePanel.classList.remove('open');
+            menuToggle.setAttribute('aria-expanded', 'false');
+        }
+        openDialog(consultOverlay, $('#consultForm input'));
+    }));
+
+    const closeConsult = $('#closeConsult');
+    if (closeConsult) closeConsult.addEventListener('click', () => closeDialog(consultOverlay));
+    
+    const cancelConsult = $('#cancelConsult');
+    if (cancelConsult) cancelConsult.addEventListener('click', () => closeDialog(consultOverlay));
+
+    [searchOverlay, consultOverlay].forEach(overlay => {
+        if (!overlay) return;
+        overlay.addEventListener('click', e => {
+            if (e.target === overlay) closeDialog(overlay);
+        });
+    });
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            if (searchOverlay?.classList.contains('open')) closeDialog(searchOverlay);
+            if (consultOverlay?.classList.contains('open')) closeDialog(consultOverlay);
+        }
+        if (e.key === 'Tab') {
+            const dialog = $$('.open.search-overlay,.open.modal-overlay')[0];
+            if (!dialog) return;
+            const nodes = $$('a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled])', dialog);
+            if (!nodes.length) return;
+            const first = nodes[0], last = nodes.at(-1);
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        }
+    });
+
+    // ── Gallery Carousel Controls ───────────────────────────────────────────
+    const gallery = $('#gallery');
+    const galleryNext = $('#galleryNext');
+    const galleryPrev = $('#galleryPrev');
+
+    if (gallery && galleryNext) {
+        galleryNext.addEventListener('click', () => {
+            const card = gallery.querySelector('.gallery-card');
+            const gap = 17;
+            const countToScroll = window.innerWidth <= 768 ? 1 : 2;
+            const scrollStep = card ? (card.offsetWidth + gap) * countToScroll : (gallery.clientWidth * 0.75);
+            const maxScroll = gallery.scrollWidth - gallery.clientWidth;
+
+            if (gallery.scrollLeft >= maxScroll - 15) {
+                gallery.scrollTo({ left: 0, behavior: 'smooth' });
+            } else {
+                gallery.scrollBy({ left: scrollStep, behavior: 'smooth' });
+            }
+        });
+    }
+
+    if (gallery && galleryPrev) {
+        galleryPrev.addEventListener('click', () => {
+            const card = gallery.querySelector('.gallery-card');
+            const gap = 17;
+            const countToScroll = window.innerWidth <= 768 ? 1 : 2;
+            const scrollStep = card ? (card.offsetWidth + gap) * countToScroll : (gallery.clientWidth * 0.75);
+
+            if (gallery.scrollLeft <= 15) {
+                gallery.scrollTo({ left: gallery.scrollWidth, behavior: 'smooth' });
+            } else {
+                gallery.scrollBy({ left: -scrollStep, behavior: 'smooth' });
+            }
+        });
+    }
+
+    $$('[data-subscribe]').forEach(form => form.addEventListener('submit', e => {
+        e.preventDefault();
+        const email = $('input[type=email]', form);
+        if (!email?.reportValidity()) return;
+        const status = form.nextElementSibling;
+        if (status) status.textContent = 'Email valid. Prototipe ini belum terhubung ke sistem langganan.';
+        toast('Formulir siap diintegrasikan dengan layanan email. Data belum dikirim.');
+    }));
+
+    const consultForm = $('#consultForm');
+    if (consultForm) {
+        consultForm.addEventListener('submit', async e => {
+            e.preventDefault();
+            const f = new FormData(e.target);
+            const message = 'KEBUTUHAN PELATIHAN SKOLAH.COM\nNama: ' + f.get('nama') + '\nOrganisasi: ' + f.get('organisasi') + '\nEmail: ' + f.get('email') + '\nKebutuhan: ' + f.get('kebutuhan');
+            try {
+                await navigator.clipboard.writeText(message);
+                toast('Ringkasan berhasil disalin. Silakan bagikan ke tim Skolah.com.');
+                closeDialog(consultOverlay);
+            } catch (err) {
+                const area = document.createElement('textarea');
+                area.value = message;
+                area.style.width = '100%';
+                area.style.marginTop = '12px';
+                area.rows = 7;
+                const modal = $('.modal', consultOverlay);
+                const prev = $('#copyFallback', modal);
+                if (prev) prev.remove();
+                const wrap = document.createElement('div');
+                wrap.id = 'copyFallback';
+                const help = document.createElement('p');
+                help.textContent = 'Salin ringkasan berikut secara manual:';
+                wrap.append(help, area);
+                if (modal) modal.appendChild(wrap);
+                area.select();
+                toast('Browser membatasi akses clipboard. Ringkasan siap disalin secara manual.');
+            }
+        });
+    }
+})();
 </script>
 @endpush

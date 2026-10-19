@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class GalleryController extends Controller
 {
@@ -35,6 +36,7 @@ class GalleryController extends Controller
         }
 
         \App\Models\Gallery::create($data);
+        Cache::forget('home_page_data_json_v3');
 
         return redirect()->route('admin.galleries.index')->with('success', 'Galeri berhasil ditambahkan');
     }
@@ -64,6 +66,7 @@ class GalleryController extends Controller
         }
 
         $gallery->update($data);
+        Cache::forget('home_page_data_json_v3');
 
         return redirect()->route('admin.galleries.index')->with('success', 'Galeri berhasil diperbarui');
     }
@@ -74,6 +77,7 @@ class GalleryController extends Controller
             app(\App\Services\MinioStorageService::class)->delete($gallery->image);
         }
         $gallery->delete();
+        Cache::forget('home_page_data_json_v3');
         return back()->with('success', 'Galeri berhasil dihapus');
     }
 }

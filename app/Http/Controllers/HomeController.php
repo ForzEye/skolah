@@ -66,7 +66,8 @@ class HomeController extends Controller
 
         // ── Cache loading ────────────────────────────────────────────────────
         // We store cache in JSON format to completely prevent __PHP_Incomplete_Class issues on shared hosting
-        $cachedJson = Cache::get('home_page_data_json_v3');
+        $isAdmin = auth()->check() && auth()->user()->hasRole('admin');
+        $cachedJson = $isAdmin ? null : Cache::get('home_page_data_json_v3');
         if ($cachedJson) {
             $rawData = json_decode($cachedJson, true) ?: [];
             
@@ -142,7 +143,6 @@ class HomeController extends Controller
                     ->where('is_active', true)
                     ->where('is_public', true)
                     ->withCount(['courses' => fn ($q) => $q->where('status', 'published')])
-                    ->having('courses_count', '>=', 1)
                     ->orderByDesc('courses_count')
                     ->limit(4)
                     ->get(),
