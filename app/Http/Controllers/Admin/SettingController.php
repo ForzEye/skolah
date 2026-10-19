@@ -158,47 +158,76 @@ class SettingController extends Controller
 
     public function uploadLogo(UploadLogoRequest $request)
     {
+        try {
+            // Verifikasi MIME server-side (bukan hanya ekstensi)
+            $file = $request->file('logo');
+            $realMime = (new \finfo(FILEINFO_MIME_TYPE))->file($file->getRealPath());
+            $clientExt = strtolower($file->getClientOriginalExtension());
+            $allowedMimes = ['image/jpeg', 'image/png', 'image/svg+xml', 'text/xml', 'image/svg', 'image/webp', 'image/gif'];
 
-        // Verifikasi MIME server-side (bukan berdasarkan ekstensi)
-        $file = $request->file('logo');
-        $realMime = (new \finfo(FILEINFO_MIME_TYPE))->file($file->getRealPath());
-        if (! in_array($realMime, ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'])) {
-            return back()->withErrors(['logo' => 'Tipe file tidak diizinkan.']);
+            if (! in_array($realMime, $allowedMimes) && ! in_array($clientExt, ['svg', 'webp', 'png', 'jpg', 'jpeg'])) {
+                return back()->withErrors(['logo' => 'Tipe file tidak diizinkan. Gunakan format JPG, PNG, SVG, atau WebP.']);
+            }
+
+            $oldLogo = Setting::get('site_logo');
+            if ($oldLogo) {
+                try {
+                    $this->storage->delete($oldLogo);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Hapus logo lama gagal: ' . $e->getMessage());
+                }
+            }
+
+            $path = $this->storage->uploadLogo($file);
+
+            Setting::set('site_logo', $path, 'general');
+            Cache::forget('setting.site_logo');
+
+            return back()->with('success', 'Logo berhasil diperbarui.');
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Upload logo gagal: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->with('error', 'Gagal memperbarui logo: ' . $e->getMessage());
         }
-
-        $oldLogo = Setting::get('site_logo');
-        if ($oldLogo) {
-            $this->storage->delete($oldLogo);
-        }
-
-        $path = $this->storage->uploadBanner($file);
-
-        Setting::set('site_logo', $path, 'general');
-        Cache::forget('setting.site_logo');
-
-        return back()->with('success', 'Logo berhasil diperbarui.');
     }
 
     public function uploadFavicon(UploadFaviconRequest $request)
     {
-        // Verifikasi MIME server-side
-        $file = $request->file('favicon');
-        $realMime = (new \finfo(FILEINFO_MIME_TYPE))->file($file->getRealPath());
-        if (! in_array($realMime, ['image/jpeg', 'image/png', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/webp'])) {
-            return back()->withErrors(['favicon' => 'Tipe file tidak diizinkan.']);
+        try {
+            // Verifikasi MIME server-side
+            $file = $request->file('favicon');
+            $realMime = (new \finfo(FILEINFO_MIME_TYPE))->file($file->getRealPath());
+            $clientExt = strtolower($file->getClientOriginalExtension());
+            $allowedMimes = ['image/jpeg', 'image/png', 'image/x-icon', 'image/vnd.microsoft.icon', 'application/ico', 'image/webp', 'image/svg+xml'];
+
+            if (! in_array($realMime, $allowedMimes) && ! in_array($clientExt, ['ico', 'png', 'svg', 'webp', 'jpg', 'jpeg'])) {
+                return back()->withErrors(['favicon' => 'Tipe file tidak diizinkan. Gunakan format ICO, PNG, SVG, atau WebP.']);
+            }
+
+            $oldFav = Setting::get('site_favicon');
+            if ($oldFav) {
+                try {
+                    $this->storage->delete($oldFav);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Hapus favicon lama gagal: ' . $e->getMessage());
+                }
+            }
+
+            $path = $this->storage->uploadFavicon($file);
+
+            Setting::set('site_favicon', $path, 'general');
+            Cache::forget('setting.site_favicon');
+
+            return back()->with('success', 'Favicon berhasil diperbarui.');
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Upload favicon gagal: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->with('error', 'Gagal memperbarui favicon: ' . $e->getMessage());
         }
-
-        $oldFav = Setting::get('site_favicon');
-        if ($oldFav) {
-            $this->storage->delete($oldFav);
-        }
-
-        $path = $this->storage->uploadBanner($file);
-
-        Setting::set('site_favicon', $path, 'general');
-        Cache::forget('setting.site_favicon');
-
-        return back()->with('success', 'Favicon berhasil diperbarui.');
     }
 
     public function clearCache(Request $request)

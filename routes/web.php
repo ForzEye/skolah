@@ -566,8 +566,9 @@ Route::middleware(['auth', 'verified', 'role:admin', 'audit', 'admin_idle'])
         Route::post('/instructors/{user}/toggle-public', [AdminInstructorController::class, 'togglePublic'])->name('instructors.toggle-public');
         Route::get('/instructors/activities', [AdminInstructorController::class, 'activities'])->name('instructors.activities');
 
-        // Audit Logs — Monitoring aksi admin/instructor
+        // Audit Logs — Monitoring aksi admin/instructor & Error Log Sistem
         Route::get('/audit-logs', [AdminAuditLogController::class, 'index'])->name('audit-logs.index');
+        Route::post('/audit-logs/clear-system', [AdminAuditLogController::class, 'clearSystemLogs'])->name('audit-logs.clear-system');
         Route::get('/audit-logs/{auditLog}', [AdminAuditLogController::class, 'show'])->name('audit-logs.show');
 
         // Backup Management — Trigger manual + download + delete

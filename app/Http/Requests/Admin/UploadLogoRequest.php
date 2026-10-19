@@ -14,7 +14,7 @@ class UploadLogoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'logo' => ['required', 'image', 'mimes:jpg,jpeg,png,svg,webp', 'max:2048'],
+            'logo' => ['required', 'file', 'mimes:jpg,jpeg,png,svg,webp', 'max:4096'],
         ];
     }
 
@@ -22,9 +22,9 @@ class UploadLogoRequest extends FormRequest
     {
         return [
             'logo.required' => 'Pilih file logo terlebih dahulu.',
-            'logo.image'    => 'File harus berupa gambar.',
+            'logo.file'     => 'File logo tidak valid.',
             'logo.mimes'    => 'Format logo harus JPG, PNG, SVG, atau WebP.',
-            'logo.max'      => 'Ukuran logo maksimal 2 MB.',
+            'logo.max'      => 'Ukuran logo maksimal 4 MB.',
         ];
     }
 }

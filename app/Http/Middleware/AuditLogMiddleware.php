@@ -43,28 +43,42 @@ class AuditLogMiddleware
 
     public function handle(Request $request, Closure $next): Response
     {
-        $response = $next($request);
+        $caughtException = null;
+        $response = null;
 
         try {
-            if ($this->shouldLog($request)) {
-                AuditLog::create([
-                    'user_id'     => auth()->id(),
-                    'ip_address'  => $request->ip(),
-                    'method'      => $request->method(),
-                    'url'         => substr($request->fullUrl(), 0, 1000),
-                    'route_name'  => $request->route()?->getName(),
-                    'payload'     => $this->sanitizePayload($request),
-                    'status_code' => $response->getStatusCode(),
-                    'user_agent'  => substr($request->userAgent() ?? '', 0, 500),
-                    'created_at'  => now(),
+            $response = $next($request);
+        } catch (\Throwable $e) {
+            $caughtException = $e;
+            throw $e;
+        } finally {
+            try {
+                if ($this->shouldLog($request)) {
+                    $statusCode = $caughtException 
+                        ? (method_exists($caughtException, 'getStatusCode') ? $caughtException->getStatusCode() : 500)
+                        : ($response?->getStatusCode() ?? 500);
+
+                    $payload = $this->buildFullPayload($request, $response, $caughtException);
+
+                    AuditLog::create([
+                        'user_id'     => auth()->id(),
+                        'ip_address'  => $request->ip(),
+                        'method'      => $request->method(),
+                        'url'         => substr($request->fullUrl(), 0, 1000),
+                        'route_name'  => $request->route()?->getName(),
+                        'payload'     => $payload,
+                        'status_code' => $statusCode,
+                        'user_agent'  => substr($request->userAgent() ?? '', 0, 500),
+                        'created_at'  => now(),
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                // Jangan sampai audit log gagal → break user flow
+                Log::error('AuditLog middleware logging error: ' . $e->getMessage(), [
+                    'url'    => $request->fullUrl(),
+                    'method' => $request->method(),
                 ]);
             }
-        } catch (\Throwable $e) {
-            // Jangan sampai audit log gagal → break user flow
-            Log::error('AuditLog middleware error: ' . $e->getMessage(), [
-                'url'    => $request->fullUrl(),
-                'method' => $request->method(),
-            ]);
         }
 
         return $response;
@@ -79,13 +93,89 @@ class AuditLogMiddleware
     }
 
     /**
+     * Bangun payload lengkap termasuk file uploads dan detail error jika terjadi.
+     */
+    protected function buildFullPayload(Request $request, ?Response $response, ?\Throwable $caughtException): ?array
+    {
+        $payload = $this->sanitizePayload($request) ?? [];
+
+        // ── 1. Catat metadata file uploads ─────────────────────────────────
+        $files = $this->extractUploadedFiles($request);
+        if (! empty($files)) {
+            $payload['_files'] = $files;
+        }
+
+        // ── 2. Tangkap detail error jika ada ───────────────────────────────
+        $exception = $caughtException ?? ($response?->exception ?? null);
+
+        if ($exception instanceof \Throwable) {
+            $payload['_error'] = [
+                'type'      => 'exception',
+                'class'     => get_class($exception),
+                'message'   => $exception->getMessage(),
+                'file'      => $exception->getFile(),
+                'line'      => $exception->getLine(),
+                'trace'     => array_slice(explode("\n", $exception->getTraceAsString()), 0, 12),
+            ];
+        } elseif ($response && $response->getStatusCode() >= 400) {
+            if (session()->has('errors')) {
+                $payload['_error'] = [
+                    'type'    => 'validation',
+                    'message' => 'Validasi input gagal',
+                    'errors'  => session('errors')->all(),
+                ];
+            } elseif (session()->has('error')) {
+                $payload['_error'] = [
+                    'type'    => 'session_error',
+                    'message' => session('error'),
+                ];
+            }
+        }
+
+        return empty($payload) ? null : $payload;
+    }
+
+    /**
+     * Ekstrak metadata file yang diupload tanpa menyimpan konten binary.
+     */
+    protected function extractUploadedFiles(Request $request): array
+    {
+        $files = [];
+
+        foreach ($request->allFiles() as $key => $file) {
+            if ($file instanceof \Illuminate\Http\UploadedFile) {
+                $files[$key] = [
+                    'original_name' => $file->getClientOriginalName(),
+                    'size'          => formatBytes($file->getSize()),
+                    'mime_type'     => $file->getClientMimeType(),
+                    'extension'     => $file->getClientOriginalExtension(),
+                ];
+            } elseif (is_array($file)) {
+                $files[$key] = array_map(function ($f) {
+                    if ($f instanceof \Illuminate\Http\UploadedFile) {
+                        return [
+                            'original_name' => $f->getClientOriginalName(),
+                            'size'          => formatBytes($f->getSize()),
+                            'mime_type'     => $f->getClientMimeType(),
+                            'extension'     => $f->getClientOriginalExtension(),
+                        ];
+                    }
+                    return null;
+                }, $file);
+            }
+        }
+
+        return $files;
+    }
+
+    /**
      * Sanitize request payload — hapus field sensitif, batasi ukuran.
      */
     protected function sanitizePayload(Request $request): ?array
     {
         $data = $request->except($this->sensitiveFields);
 
-        // Hapus file dari payload (sudah dicatat di URL)
+        // Hapus objek file dari data (sudah ditangani di extractUploadedFiles)
         $data = array_filter($data, fn($value) => !($value instanceof \Illuminate\Http\UploadedFile));
 
         if (empty($data)) {

@@ -47,6 +47,24 @@ class MinioStorageService
         return $this->uploadImage($file, config('minio.paths.banner'), 1920, 85);
     }
 
+    /**
+     * Upload Logo situs (mendukung SVG, PNG, JPG, WebP).
+     * Jika S3 gagal, otomatis fallback ke local public disk.
+     */
+    public function uploadLogo(UploadedFile $file): string
+    {
+        return $this->uploadSettingAsset($file, 'images/settings', 'logo', 800);
+    }
+
+    /**
+     * Upload Favicon situs (mendukung ICO, PNG, SVG, WebP).
+     * Jika S3 gagal, otomatis fallback ke local public disk.
+     */
+    public function uploadFavicon(UploadedFile $file): string
+    {
+        return $this->uploadSettingAsset($file, 'images/settings', 'favicon', 128);
+    }
+
     public function uploadBookCover(UploadedFile $file, string $bookSlug): string
     {
         return $this->uploadImage(
@@ -248,16 +266,139 @@ class MinioStorageService
 
         if (! $path) return;
 
-        if (Storage::disk($this->disk)->exists($path)) {
-            Storage::disk($this->disk)->delete($path);
+        try {
+            if (Storage::disk($this->disk)->exists($path)) {
+                Storage::disk($this->disk)->delete($path);
+            }
+
+            // Hapus WebP sibling kalau ada (jpg/png → webp)
+            if (preg_match('/\.(jpe?g|png)$/i', $path)) {
+                $webpPath = preg_replace('/\.(jpe?g|png)$/i', '.webp', $path);
+                if ($webpPath && Storage::disk($this->disk)->exists($webpPath)) {
+                    Storage::disk($this->disk)->delete($webpPath);
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('MinioStorage delete from S3 failed: ' . $e->getMessage(), [
+                'path' => $path,
+            ]);
         }
 
-        // Hapus WebP sibling kalau ada (jpg/png → webp)
-        if (preg_match('/\.(jpe?g|png)$/i', $path)) {
-            $webpPath = preg_replace('/\.(jpe?g|png)$/i', '.webp', $path);
-            if ($webpPath && Storage::disk($this->disk)->exists($webpPath)) {
-                Storage::disk($this->disk)->delete($webpPath);
+        // Cek juga di local public disk jika ada
+        try {
+            if (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
             }
+        } catch (\Throwable) {}
+    }
+
+    /**
+     * Helper khusus upload asset settings (logo, favicon, dll).
+     * Mengatasi format vector (SVG) dan ICO yang tidak didukung GD.
+     */
+    protected function uploadSettingAsset(UploadedFile $file, string $folder, string $prefix, int $maxWidth): string
+    {
+        $this->checkPathTraversal($file);
+
+        $clientExt = strtolower($file->getClientOriginalExtension());
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($file->getRealPath());
+
+        $isSvg = in_array($mime, ['image/svg+xml', 'text/xml', 'image/svg']) || $clientExt === 'svg';
+        $isIco = in_array($mime, ['image/x-icon', 'image/vnd.microsoft.icon', 'application/ico']) || $clientExt === 'ico';
+
+        $basename = $prefix . '_' . Str::random(24);
+
+        // ── 1. Handle SVG (Vector: Jangan diproses dengan GD!) ─────────────
+        if ($isSvg) {
+            $filename    = $basename . '.svg';
+            $path        = "{$folder}/{$filename}";
+            $content     = file_get_contents($file->getRealPath());
+            $contentType = 'image/svg+xml';
+
+            return $this->storeToStorage($path, $content, $contentType, $file);
+        }
+
+        // ── 2. Handle ICO (Favicon Icon: Jangan diproses dengan GD!) ────────
+        if ($isIco) {
+            $filename    = $basename . '.ico';
+            $path        = "{$folder}/{$filename}";
+            $content     = file_get_contents($file->getRealPath());
+            $contentType = 'image/x-icon';
+
+            return $this->storeToStorage($path, $content, $contentType, $file);
+        }
+
+        // ── 3. Handle Raster Images (PNG, JPG, WebP) ──────────────────────
+        try {
+            $manager = new ImageManager(new GdDriver());
+            $image   = $manager->read($file->getRealPath());
+
+            if ($image->width() > $maxWidth) {
+                $image->scaleDown(width: $maxWidth);
+            }
+
+            $extension = match ($clientExt) {
+                'png'   => 'png',
+                'webp'  => 'webp',
+                'gif'   => 'gif',
+                default => 'jpg',
+            };
+
+            $contentType = match ($extension) {
+                'png'   => 'image/png',
+                'webp'  => 'image/webp',
+                'gif'   => 'image/gif',
+                default => 'image/jpeg',
+            };
+
+            $filename = $basename . '.' . $extension;
+            $path     = "{$folder}/{$filename}";
+
+            $encoded = match ($extension) {
+                'png'   => (string) $image->toPng(),
+                'webp'  => (string) $image->toWebp(90),
+                'gif'   => (string) $image->toGif(),
+                default => (string) $image->toJpeg(90),
+            };
+
+            return $this->storeToStorage($path, $encoded, $contentType, $file);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("GD process failed for {$prefix}, uploading raw file", [
+                'error' => $e->getMessage(),
+            ]);
+
+            $ext = $clientExt ?: 'png';
+            $filename = $basename . '.' . $ext;
+            $path = "{$folder}/{$filename}";
+            $content = file_get_contents($file->getRealPath());
+
+            return $this->storeToStorage($path, $content, $mime ?: 'application/octet-stream', $file);
+        }
+    }
+
+    /**
+     * Simpan file ke S3/MinIO dengan fallback ke Local Public disk jika S3 bermasalah.
+     */
+    protected function storeToStorage(string $path, string $content, string $contentType, UploadedFile $file): string
+    {
+        try {
+            Storage::disk($this->disk)->put($path, $content, [
+                'visibility'   => 'public',
+                'ContentType'  => $contentType,
+                'CacheControl' => 'public, max-age=31536000',
+            ]);
+
+            return $this->buildPublicUrl($path);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("S3 storage upload failed for {$path}, falling back to local public disk: " . $e->getMessage());
+
+            // Fallback ke local public storage: public/storage/{path}
+            Storage::disk('public')->put($path, $content, [
+                'visibility'   => 'public',
+                'ContentType'  => $contentType,
+            ]);
+
+            return Storage::disk('public')->url($path);
         }
     }
 
